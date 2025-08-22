@@ -1,0 +1,105 @@
+// -----------------------------
+// Import Required Core Modules
+// -----------------------------
+
+const http = require('http');  // WHY: To create an HTTP server
+const fs = require('fs');      // WHY: To read and serve files from disk
+const path = require('path');  // WHY: To handle file paths in a safe cross-platform way
+
+
+// -----------------------------
+// Define Server Settings
+// -----------------------------
+
+const port = 3000; // WHY: Port where our server will listen for requests
+
+
+// -----------------------------
+// Create the HTTP Server
+// -----------------------------
+
+// The callback runs every time the server receives a request (e.g., visiting localhost:3000)
+const server = http.createServer((request, response) => {
+
+    // -----------------------------
+    // Resolve the File Path
+    // -----------------------------
+    // If user visits "/", serve "index.html"
+    // Otherwise, try to serve the requested file (e.g., "/style.css" → "style.css")
+    const filePath = path.join(
+        __dirname,
+        request.url === '/' ? "index.html" : request.url
+    );
+
+    // Debugging helper: Print the resolved file path in the console
+    console.log("Requested file:", filePath);
+
+
+    // -----------------------------
+    // Determine File Extension
+    // -----------------------------
+    // Extract extension (e.g., ".html", ".css") from the requested file
+    const extName = String(path.extname(filePath)).toLowerCase();
+
+    // -----------------------------
+    // Define Supported MIME Types
+    // -----------------------------
+    // WHY: Browsers need to know how to interpret files (HTML, CSS, JS, PNG, etc.)
+    const mimeTypes = {
+        '.html': 'text/html',        // HTML files
+        '.css' : 'text/css',         // Stylesheets
+        '.js'  : 'text/javascript',  // JavaScript files
+        '.png' : 'image/png'         // Images (FIXED: it was text/png before)
+    };
+
+    // If the file extension is known → return correct MIME type
+    // Otherwise, use "application/octet-stream" (generic binary type)
+    const contentType = mimeTypes[extName] || 'application/octet-stream';
+
+
+    // -----------------------------
+    // Read and Serve the File
+    // -----------------------------
+
+    fs.readFile(filePath, (err, content) => {
+        if (err) {
+            // -----------------------------
+            // Handle File Not Found (404)
+            // -----------------------------
+            if (err.code === "ENOENT") {
+                // File doesn’t exist → send 404 error
+                response.writeHead(404, { "Content-Type": "text/html" });
+                response.end("<h1>404: File Not Found</h1>");
+            } else {
+                // Some other server error (permissions, etc.)
+                response.writeHead(500, { "Content-Type": "text/plain" });
+                response.end("500: Server Error");
+            }
+        } else {
+            // -----------------------------
+            // Successfully Found File
+            // -----------------------------
+            // Respond with 200 OK and send the file content
+            response.writeHead(200, { "Content-Type": contentType });
+            response.end(content, "utf-8"); // WHY: "utf-8" ensures proper text encoding
+        }
+    });
+});
+
+
+// -----------------------------
+// Start the Server
+// -----------------------------
+
+// Begin listening on the specified port
+server.listen(port, () => {
+    console.log(`✅ Server is running at http://localhost:${port}`);
+});
+
+// -----------------------------
+// Extra Notes
+// -----------------------------
+// - __dirname gives the absolute path of the current JS file's folder
+// - path.join() ensures correct slashes are used on Windows/Linux/Mac
+// - response.writeHead() sets HTTP headers (status code + MIME type)
+// - response.end() sends the final response to the browser
